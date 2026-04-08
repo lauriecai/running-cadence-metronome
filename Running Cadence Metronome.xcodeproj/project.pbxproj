@@ -61,7 +61,7 @@
 		CAD002000000000000000022 /* WatchContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchContentView.swift; sourceTree = "<group>"; };
 		CAD002000000000000000023 /* WatchMetronomeAudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchMetronomeAudioService.swift; sourceTree = "<group>"; };
 		CAD002000000000000000024 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		CAD002000000000000000030 /* Running Cadence Metronome.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Running Cadence Metronome.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CAD002000000000000000030 /* Running Cadence Metronome.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Running Cadence Metronome.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D30BD5E32F844AA400918A04 /* RunningCadenceMetronome-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "RunningCadenceMetronome-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -168,8 +168,8 @@
 			dependencies = (
 				CAD00C000000000000000001 /* PBXTargetDependency */,
 			);
-			name = Running Cadence Metronome;
-			productName = Running Cadence Metronome;
+			name = "Running Cadence Metronome";
+			productName = "Running Cadence Metronome";
 			productReference = CAD002000000000000000030 /* Running Cadence Metronome.app */;
 			productType = "com.apple.product-type.application";
 		};
