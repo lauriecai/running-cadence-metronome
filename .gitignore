@@ -1,8 +1,35 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
 # Xcode — per-user settings (windows, tabs, schemes, etc.)
 xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
 
 # Build products and indexes (never commit)
 DerivedData/
 .derivedData/
 build/
-*.xcuserstate
+*.hmap
+*.ipa
+*.dSYM.zip
+
+# Swift Package Manager
+.build/
+Packages/
+
+# CocoaPods (ignore if you add a Podfile later)
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
