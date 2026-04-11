@@ -1,2 +1,8 @@
 # Xcode — per-user settings (windows, tabs, schemes, etc.)
 xcuserdata/
+
+# Build products and indexes (never commit)
+DerivedData/
+.derivedData/
+build/
+*.xcuserstate
