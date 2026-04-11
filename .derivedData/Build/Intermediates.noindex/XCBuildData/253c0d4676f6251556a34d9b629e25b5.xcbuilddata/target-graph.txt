@@ -1,0 +1,4 @@
+Target dependency graph (2 targets)
+Target 'Running Cadence Metronome' in project 'Running Cadence Metronome'
+➜ Explicit dependency on target 'Running Cadence Metronome Watch' in project 'Running Cadence Metronome'
+Target 'Running Cadence Metronome Watch' in project 'Running Cadence Metronome' (no dependencies)

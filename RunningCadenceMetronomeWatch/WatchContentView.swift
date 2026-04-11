@@ -45,6 +45,22 @@ struct WatchContentView: View {
                 .pickerStyle(.wheel)
                 .frame(height: 50)
 
+                Text("Accent: \(metronome.emphasis.patternDescription)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Picker("Accent", selection: Binding(
+                    get: { metronome.emphasis },
+                    set: { metronome.setEmphasis($0) }
+                )) {
+                    ForEach(BeatEmphasisPattern.allCases) { e in
+                        Text("\(e.shortLabel) — \(e.title)").tag(e)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(height: 44)
+
                 // Volume
                 HStack(spacing: 4) {
                     Image(systemName: "speaker.fill")

@@ -9,12 +9,20 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
     private let player = AVAudioPlayerNode()
     private let sampleRate: Double = 44_100
     private var buffers: [TickPreset: AVAudioPCMBuffer] = [:]
+    private var accentBuffers: [TickPreset: AVAudioPCMBuffer] = [:]
 
     // Scheduling state — accessed only on schedulingQueue
     private let schedulingQueue = DispatchQueue(label: "com.runningcadencemetronome.scheduling")
     private var nextSampleTime: AVAudioFramePosition = 0
     private var intervalInSamples: AVAudioFrameCount = 0
     private var currentPreset: TickPreset = .mechanicalTock
+    private var currentEmphasis: BeatEmphasisPattern = .every2
+    /// Increments for each scheduled tick (used to pick accent vs normal).
+    private var beatPhase: Int = 0
+    /// After `player.stop`/`play` or initial start, the first `scheduleAhead` must not
+    /// advance `beatPhase` while catching the playhead up from `nextSampleTime == 0`, or
+    /// the downbeat (high tick) is shifted to an offbeat (especially obvious for every 2).
+    private var alignNextCatchUpToDownbeat = false
     private var isTicking = false
 
     /// How many beats to pre-schedule ahead of the player's current position.
@@ -27,9 +35,23 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
     override init() {
         super.init()
         let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
-        buffers[.mechanicalTock] = Self.makeBuffer(frequency: 550, format: format, brightness: 0.6, decay: 105)
-        buffers[.woodKnock] = Self.makeBuffer(frequency: 420, format: format, brightness: 0.35)
-        buffers[.softTap] = Self.makeBuffer(frequency: 260, format: format, brightness: 0.15, decay: 70)
+        for preset in TickPreset.allCases {
+            let p = Self.synthesisParameters(for: preset)
+            buffers[preset] = Self.makeBuffer(
+                frequency: p.frequency,
+                format: format,
+                brightness: p.brightness,
+                decay: p.decay,
+                amplitudeScale: 1.0
+            )
+            accentBuffers[preset] = Self.makeBuffer(
+                frequency: p.frequency * 1.45,
+                format: format,
+                brightness: min(1.0, p.brightness * 1.65),
+                decay: p.decay * 1.08,
+                amplitudeScale: 1.18
+            )
+        }
 
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: format)
@@ -44,12 +66,14 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
 
     // MARK: - MetronomeTickPlayback
 
-    func startTicking(bpm: Int, preset: TickPreset) {
+    func startTicking(bpm: Int, preset: TickPreset, emphasis: BeatEmphasisPattern) {
         startEngineIfNeeded()
 
         schedulingQueue.async { [self] in
             isTicking = true
             currentPreset = preset
+            currentEmphasis = emphasis
+            beatPhase = 0
             intervalInSamples = AVAudioFrameCount(sampleRate * 60.0 / Double(bpm))
             nextSampleTime = 0
 
@@ -57,6 +81,7 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
             player.stop()
             player.play()
 
+            alignNextCatchUpToDownbeat = true
             scheduleAhead()
         }
     }
@@ -85,6 +110,14 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
         }
     }
 
+    func updateEmphasis(_ emphasis: BeatEmphasisPattern) {
+        schedulingQueue.async { [self] in
+            currentEmphasis = emphasis
+            guard isTicking else { return }
+            rescheduleFromNow()
+        }
+    }
+
     func setVolume(_ volume: Float) {
         gainLock.lock()
         gain = volume
@@ -102,6 +135,8 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
         player.play()
         // Reset timeline — next tick plays at sample 0 (i.e. now)
         nextSampleTime = 0
+        beatPhase = 0
+        alignNextCatchUpToDownbeat = true
         scheduleAhead()
     }
 
@@ -109,7 +144,8 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
     /// Calls itself again after one beat interval to keep the schedule topped up.
     private func scheduleAhead() {
         guard isTicking else { return }
-        guard let buffer = buffers[currentPreset] else { return }
+        guard let normalBuffer = buffers[currentPreset] else { return }
+        let accentBuffer = accentBuffers[currentPreset] ?? normalBuffer
 
         // Determine "now" on the player's sample timeline
         let playerNow: AVAudioFramePosition
@@ -120,7 +156,27 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
             playerNow = 0
         }
 
-        let horizon = playerNow + AVAudioFramePosition(lookAheadBeats) * AVAudioFramePosition(intervalInSamples)
+        let intervalPos = AVAudioFramePosition(intervalInSamples)
+        guard intervalPos > 0 else { return }
+
+        let snapDownbeat = alignNextCatchUpToDownbeat
+        alignNextCatchUpToDownbeat = false
+
+        // If the playhead is already past `nextSampleTime`, jump forward to the next beat
+        // instant without (on a fresh timeline) advancing the pattern — first heard tick
+        // stays the downbeat / “high” for every-2 and other patterns.
+        if nextSampleTime < playerNow {
+            let delta = playerNow - nextSampleTime
+            let skippedBeats = (delta + intervalPos - 1) / intervalPos
+            if skippedBeats > 0 {
+                nextSampleTime += skippedBeats * intervalPos
+                if !snapDownbeat {
+                    beatPhase += Int(skippedBeats)
+                }
+            }
+        }
+
+        let horizon = playerNow + AVAudioFramePosition(lookAheadBeats) * intervalPos
 
         // Schedule buffers from nextSampleTime up to the horizon
         gainLock.lock()
@@ -129,9 +185,11 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
 
         while nextSampleTime < horizon {
             let time = AVAudioTime(sampleTime: nextSampleTime, atRate: sampleRate)
-            let toSchedule = Self.bufferByApplyingGain(buffer, gain: g)
+            let source = currentEmphasis.isAccent(forBeatIndex: beatPhase) ? accentBuffer : normalBuffer
+            let toSchedule = Self.bufferByApplyingGain(source, gain: g)
             player.scheduleBuffer(toSchedule, at: time, options: [], completionHandler: nil)
-            nextSampleTime += AVAudioFramePosition(intervalInSamples)
+            beatPhase += 1
+            nextSampleTime += intervalPos
         }
 
         // Re-invoke after one beat to keep the schedule topped up
@@ -149,6 +207,14 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
     }
 
     // MARK: - Buffer synthesis
+
+    private static func synthesisParameters(for preset: TickPreset) -> (frequency: Double, brightness: Double, decay: Double) {
+        switch preset {
+        case .mechanicalTock: return (550, 0.6, 105)
+        case .woodKnock: return (420, 0.35, 95)
+        case .softTap: return (260, 0.15, 70)
+        }
+    }
 
     /// Applies linear gain; clamps samples to ±1 to limit harsh clipping when gain > 1.
     private static func bufferByApplyingGain(_ buffer: AVAudioPCMBuffer, gain: Float) -> AVAudioPCMBuffer {
@@ -173,7 +239,8 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
         frequency: Double,
         format: AVAudioFormat,
         brightness: Double = 1.0,
-        decay: Double = 95
+        decay: Double = 95,
+        amplitudeScale: Double = 1.0
     ) -> AVAudioPCMBuffer {
         let sampleRate = format.sampleRate
         let duration = 0.055
@@ -186,7 +253,7 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
             let envelope = exp(-t * decay)
             let fundamental = sin(2 * Double.pi * frequency * t)
             let partial = 0.35 * sin(2 * Double.pi * frequency * 1.5 * t)
-            ptr[i] = Float((fundamental + partial * brightness) * envelope * 0.85)
+            ptr[i] = Float((fundamental + partial * brightness) * envelope * 0.85 * amplitudeScale)
         }
         return buffer
     }

@@ -5,6 +5,7 @@ import Foundation
 public final class MetronomeController: ObservableObject {
     @Published public private(set) var bpm: Int
     @Published public private(set) var preset: TickPreset
+    @Published public private(set) var emphasis: BeatEmphasisPattern
     @Published public private(set) var isPlaying: Bool
     /// User level `0...1` (slider); applied to playback as `volume * Self.maxVolumeGain`.
     @Published public private(set) var volume: Float
@@ -16,10 +17,12 @@ public final class MetronomeController: ObservableObject {
     public init(
         bpm: Int = 180,
         preset: TickPreset = .mechanicalTock,
+        emphasis: BeatEmphasisPattern = .every2,
         playback: MetronomeTickPlayback
     ) {
         self.bpm = max(40, min(240, bpm))
         self.preset = preset
+        self.emphasis = emphasis
         self.isPlaying = false
         // Default UI position corresponds to 1.0x playback gain (not max boost).
         self.volume = 1.0 / Self.maxVolumeGain
@@ -53,10 +56,19 @@ public final class MetronomeController: ObservableObject {
         UserDefaults.standard.set(value.rawValue, forKey: "running_cadence_preset")
     }
 
+    public func setEmphasis(_ value: BeatEmphasisPattern) {
+        guard value != emphasis else { return }
+        emphasis = value
+        if isPlaying {
+            playback.updateEmphasis(value)
+        }
+        UserDefaults.standard.set(value.rawValue, forKey: "running_cadence_emphasis")
+    }
+
     public func start() {
         guard !isPlaying else { return }
         isPlaying = true
-        playback.startTicking(bpm: bpm, preset: preset)
+        playback.startTicking(bpm: bpm, preset: preset, emphasis: emphasis)
     }
 
     public func stop() {

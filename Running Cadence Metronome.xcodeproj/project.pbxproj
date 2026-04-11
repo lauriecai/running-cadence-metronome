@@ -22,6 +22,8 @@
 		CAD00100000000000000000D /* MetronomeTickPlayback.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD002000000000000000011 /* MetronomeTickPlayback.swift */; };
 		CAD00100000000000000000E /* MetronomeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD002000000000000000012 /* MetronomeController.swift */; };
 		CAD00100000000000000000F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CAD002000000000000000024 /* Assets.xcassets */; };
+		CAD001000000000000000010 /* BeatEmphasisPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD002000000000000000013 /* BeatEmphasisPattern.swift */; };
+		CAD001000000000000000011 /* BeatEmphasisPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD002000000000000000013 /* BeatEmphasisPattern.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +58,7 @@
 		CAD002000000000000000010 /* TickPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TickPreset.swift; sourceTree = "<group>"; };
 		CAD002000000000000000011 /* MetronomeTickPlayback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetronomeTickPlayback.swift; sourceTree = "<group>"; };
 		CAD002000000000000000012 /* MetronomeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetronomeController.swift; sourceTree = "<group>"; };
+		CAD002000000000000000013 /* BeatEmphasisPattern.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatEmphasisPattern.swift; sourceTree = "<group>"; };
 		CAD002000000000000000020 /* Running Cadence Metronome Watch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Running Cadence Metronome Watch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		CAD002000000000000000021 /* RunningCadenceMetronomeWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunningCadenceMetronomeWatchApp.swift; sourceTree = "<group>"; };
 		CAD002000000000000000022 /* WatchContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchContentView.swift; sourceTree = "<group>"; };
@@ -145,6 +148,7 @@
 			isa = PBXGroup;
 			children = (
 				CAD002000000000000000010 /* TickPreset.swift */,
+				CAD002000000000000000013 /* BeatEmphasisPattern.swift */,
 				CAD002000000000000000011 /* MetronomeTickPlayback.swift */,
 				CAD002000000000000000012 /* MetronomeController.swift */,
 			);
@@ -255,6 +259,7 @@
 				CAD001000000000000000002 /* ContentView.swift in Sources */,
 				CAD001000000000000000003 /* MetronomeAudioService.swift in Sources */,
 				CAD001000000000000000004 /* TickPreset.swift in Sources */,
+				CAD001000000000000000010 /* BeatEmphasisPattern.swift in Sources */,
 				CAD001000000000000000005 /* MetronomeTickPlayback.swift in Sources */,
 				CAD001000000000000000006 /* MetronomeController.swift in Sources */,
 			);
@@ -268,6 +273,7 @@
 				CAD00100000000000000000A /* WatchContentView.swift in Sources */,
 				CAD00100000000000000000B /* WatchMetronomeAudioService.swift in Sources */,
 				CAD00100000000000000000C /* TickPreset.swift in Sources */,
+				CAD001000000000000000011 /* BeatEmphasisPattern.swift in Sources */,
 				CAD00100000000000000000D /* MetronomeTickPlayback.swift in Sources */,
 				CAD00100000000000000000E /* MetronomeController.swift in Sources */,
 			);

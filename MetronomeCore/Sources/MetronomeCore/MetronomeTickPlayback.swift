@@ -2,8 +2,8 @@ import Foundation
 
 /// Platform-specific audio (and optional haptics). Implemented in the iOS / watchOS apps.
 public protocol MetronomeTickPlayback: AnyObject {
-    /// Begin continuously scheduling tick audio at the given BPM and preset.
-    func startTicking(bpm: Int, preset: TickPreset)
+    /// Begin continuously scheduling tick audio at the given BPM, preset, and accent pattern.
+    func startTicking(bpm: Int, preset: TickPreset, emphasis: BeatEmphasisPattern)
 
     /// Stop all scheduled ticks.
     func stopTicking()
@@ -13,6 +13,9 @@ public protocol MetronomeTickPlayback: AnyObject {
 
     /// Change the tick sound while ticking continues. No-op if not currently ticking.
     func updatePreset(_ preset: TickPreset)
+
+    /// Change accent grouping while ticking continues. No-op if not currently ticking.
+    func updateEmphasis(_ emphasis: BeatEmphasisPattern)
 
     /// Linear output gain (0.0 … `MetronomeController.maxVolumeGain`).
     func setVolume(_ volume: Float)

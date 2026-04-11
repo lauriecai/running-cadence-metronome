@@ -35,6 +35,7 @@ struct ContentView: View {
                     .font(.title2.weight(.semibold))
                 bpmControls
                 presetPicker
+                emphasisPicker
                 volumeControl
                 playStopRow
             }
@@ -147,6 +148,30 @@ struct ContentView: View {
         }
     }
 
+    private var emphasisPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Beat emphasis")
+                    .font(.subheadline.weight(.medium))
+                Spacer()
+                Text(metronome.emphasis.patternDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
+            }
+            Picker("Accent", selection: Binding(
+                get: { metronome.emphasis },
+                set: { metronome.setEmphasis($0) }
+            )) {
+                ForEach(BeatEmphasisPattern.allCases) { e in
+                    Text(e.shortLabel).tag(e)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityLabel("Beats per accented cycle")
+        }
+    }
+
     private var volumeControl: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Metronome volume")
@@ -214,10 +239,11 @@ private struct DeviceChrome<Content: View>: View {
 
 #Preview {
 	final class PreviewPlayback: MetronomeTickPlayback {
-		func startTicking(bpm: Int, preset: TickPreset) {}
+		func startTicking(bpm: Int, preset: TickPreset, emphasis: BeatEmphasisPattern) {}
 		func stopTicking() {}
 		func updateBPM(_ bpm: Int) {}
 		func updatePreset(_ preset: TickPreset) {}
+		func updateEmphasis(_ emphasis: BeatEmphasisPattern) {}
 		func setVolume(_ volume: Float) {}
 	}
 
