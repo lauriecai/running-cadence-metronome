@@ -7,12 +7,10 @@ public final class MetronomeController: ObservableObject {
     @Published public private(set) var preset: TickPreset
     @Published public private(set) var emphasis: BeatEmphasisPattern
     @Published public private(set) var isPlaying: Bool
-    /// User level `0...1` (slider); applied to playback as `volume * Self.maxVolumeGain`.
+    /// User level `0...1` (slider); forwarded directly to playback.
     @Published public private(set) var volume: Float
 
     private let playback: MetronomeTickPlayback
-
-    public static let maxVolumeGain: Float = 1.2
 
     public init(
         bpm: Int = 180,
@@ -24,8 +22,7 @@ public final class MetronomeController: ObservableObject {
         self.preset = preset
         self.emphasis = emphasis
         self.isPlaying = false
-        // Default UI position corresponds to 1.0x playback gain (not max boost).
-        self.volume = 1.0 / Self.maxVolumeGain
+        self.volume = 1.0
         self.playback = playback
         playback.setVolume(1.0)
     }
@@ -44,7 +41,7 @@ public final class MetronomeController: ObservableObject {
         let clamped = max(0.0, min(1.0, value))
         guard clamped != volume else { return }
         volume = clamped
-        playback.setVolume(clamped * Self.maxVolumeGain)
+        playback.setVolume(clamped)
     }
 
     public func setPreset(_ value: TickPreset) {

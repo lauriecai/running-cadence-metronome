@@ -29,9 +29,6 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
     /// At 40 BPM this gives ~6 seconds of runway; plenty for background execution.
     private let lookAheadBeats = 4
 
-    private let gainLock = NSLock()
-    private var gain: Float = 1.0
-
     override init() {
         super.init()
         let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
@@ -119,10 +116,7 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
     }
 
     func setVolume(_ volume: Float) {
-        gainLock.lock()
-        gain = volume
-        gainLock.unlock()
-        engine.mainMixerNode.outputVolume = 1.0
+        player.volume = max(0.0, min(1.0, volume))
     }
 
     // MARK: - Scheduling loop
@@ -178,16 +172,11 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
 
         let horizon = playerNow + AVAudioFramePosition(lookAheadBeats) * intervalPos
 
-        // Schedule buffers from nextSampleTime up to the horizon
-        gainLock.lock()
-        let g = gain
-        gainLock.unlock()
-
+        // Schedule buffers from nextSampleTime up to the horizon.
         while nextSampleTime < horizon {
             let time = AVAudioTime(sampleTime: nextSampleTime, atRate: sampleRate)
             let source = currentEmphasis.isAccent(forBeatIndex: beatPhase) ? accentBuffer : normalBuffer
-            let toSchedule = Self.bufferByApplyingGain(source, gain: g)
-            player.scheduleBuffer(toSchedule, at: time, options: [], completionHandler: nil)
+            player.scheduleBuffer(source, at: time, options: [], completionHandler: nil)
             beatPhase += 1
             nextSampleTime += intervalPos
         }
@@ -214,25 +203,6 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
         case .woodKnock: return (420, 0.35, 95)
         case .softTap: return (260, 0.15, 70)
         }
-    }
-
-    /// Applies linear gain; clamps samples to ±1 to limit harsh clipping when gain > 1.
-    private static func bufferByApplyingGain(_ buffer: AVAudioPCMBuffer, gain: Float) -> AVAudioPCMBuffer {
-        if abs(Double(gain) - 1.0) < 0.000_001 {
-            return buffer
-        }
-        let format = buffer.format
-        let frameCount = buffer.frameLength
-        let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
-        out.frameLength = frameCount
-        guard let inPtr = buffer.floatChannelData?.pointee,
-              let outPtr = out.floatChannelData?.pointee else { return buffer }
-        let g = gain
-        for i in 0 ..< Int(frameCount) {
-            let s = inPtr[i] * g
-            outPtr[i] = max(-1, min(1, s))
-        }
-        return out
     }
 
     private static func makeBuffer(

@@ -18,8 +18,6 @@ final class WatchMetronomeAudioService: NSObject, MetronomeTickPlayback {
     private var currentEmphasis: BeatEmphasisPattern = .every2
     private var beatPhase: Int = 0
 
-    private let gainLock = NSLock()
-    private var gain: Float = 1.0
     private let hapticsSettings: WatchHapticsSettings
     private let scheduledBeatsAhead = 6
     private let schedulerInterval: TimeInterval = 0.015
@@ -97,10 +95,7 @@ final class WatchMetronomeAudioService: NSObject, MetronomeTickPlayback {
     }
 
     func setVolume(_ volume: Float) {
-        gainLock.lock()
-        gain = volume
-        gainLock.unlock()
-        engine.mainMixerNode.outputVolume = 1.0
+        player.volume = max(0.0, min(1.0, volume))
     }
 
     // MARK: - Audio-clock beat scheduling
@@ -194,12 +189,8 @@ final class WatchMetronomeAudioService: NSObject, MetronomeTickPlayback {
     ) {
         let isAccent = currentEmphasis.isAccent(forBeatIndex: beatPhase)
         let source = isAccent ? accentBuffer : normalBuffer
-        gainLock.lock()
-        let g = gain
-        gainLock.unlock()
-        let scaled = Self.bufferByApplyingGain(source, gain: g)
         let beatTime = AVAudioTime(sampleTime: sampleTime, atRate: sampleRate)
-        player.scheduleBuffer(scaled, at: beatTime, options: [], completionHandler: nil)
+        player.scheduleBuffer(source, at: beatTime, options: [], completionHandler: nil)
 
         if shouldPlayHaptic(isAccent: isAccent) {
             scheduleHaptic(forBeatAtSampleTime: sampleTime, isAccent: isAccent)
@@ -263,24 +254,6 @@ final class WatchMetronomeAudioService: NSObject, MetronomeTickPlayback {
         case .woodKnock: return (420, 0.35, 95)
         case .softTap: return (260, 0.15, 70)
         }
-    }
-
-    private static func bufferByApplyingGain(_ buffer: AVAudioPCMBuffer, gain: Float) -> AVAudioPCMBuffer {
-        if abs(Double(gain) - 1.0) < 0.000_001 {
-            return buffer
-        }
-        let format = buffer.format
-        let frameCount = buffer.frameLength
-        let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
-        out.frameLength = frameCount
-        guard let inPtr = buffer.floatChannelData?.pointee,
-              let outPtr = out.floatChannelData?.pointee else { return buffer }
-        let g = gain
-        for i in 0 ..< Int(frameCount) {
-            let s = inPtr[i] * g
-            outPtr[i] = max(-1, min(1, s))
-        }
-        return out
     }
 
     private static func makeBuffer(

@@ -17,6 +17,6 @@ public protocol MetronomeTickPlayback: AnyObject {
     /// Change accent grouping while ticking continues. No-op if not currently ticking.
     func updateEmphasis(_ emphasis: BeatEmphasisPattern)
 
-    /// Linear output gain (0.0 … `MetronomeController.maxVolumeGain`).
+    /// Linear output volume level (0.0 ... 1.0).
     func setVolume(_ volume: Float)
 }
