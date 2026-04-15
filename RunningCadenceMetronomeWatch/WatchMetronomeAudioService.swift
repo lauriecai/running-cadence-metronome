@@ -1,4 +1,5 @@
 import AVFoundation
+import Combine
 import Foundation
 import WatchKit
 
@@ -22,6 +23,7 @@ final class WatchMetronomeAudioService: NSObject, MetronomeTickPlayback {
     private let schedulerQueue = DispatchQueue(label: "com.cadence.metronome.watch.audio-scheduler", qos: .userInteractive)
     private let notificationCenter: NotificationCenter
     private var notificationObservers: [NSObjectProtocol] = []
+    private var hapticsSettingsCancellables = Set<AnyCancellable>()
 
     private let hapticsSettings: WatchHapticsSettings
     private let scheduledBeatsAhead = 24
@@ -60,6 +62,7 @@ final class WatchMetronomeAudioService: NSObject, MetronomeTickPlayback {
         engine.connect(player, to: engine.mainMixerNode, format: format)
         engine.prepare()
         registerForAudioNotifications()
+        observeHapticsSettingsChanges()
     }
 
     deinit {
@@ -333,6 +336,30 @@ final class WatchMetronomeAudioService: NSObject, MetronomeTickPlayback {
     private func startEngineIfNeeded() {
         guard !engine.isRunning else { return }
         try? engine.start()
+    }
+
+    /// Rebuilds the schedule so haptic mode / on-off applies immediately (same idea as `updatePreset`).
+    private func observeHapticsSettingsChanges() {
+        hapticsSettings.$hapticsMode
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.rebuildScheduleForHapticsSettingsChange()
+            }
+            .store(in: &hapticsSettingsCancellables)
+
+        hapticsSettings.$hapticsEnabled
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.rebuildScheduleForHapticsSettingsChange()
+            }
+            .store(in: &hapticsSettingsCancellables)
+    }
+
+    private func rebuildScheduleForHapticsSettingsChange() {
+        schedulerQueue.async { [weak self] in
+            guard let self, self.schedulingTimer != nil else { return }
+            self.rebuildSchedule(resetBeatPhase: false)
+        }
     }
 
     private func registerForAudioNotifications() {
