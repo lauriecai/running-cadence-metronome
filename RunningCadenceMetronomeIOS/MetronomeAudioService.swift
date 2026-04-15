@@ -16,7 +16,7 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
     private var nextSampleTime: AVAudioFramePosition = 0
     private var intervalInSamples: AVAudioFrameCount = 0
     private var currentPreset: TickPreset = .mechanicalTock
-    private var currentEmphasis: BeatEmphasisPattern = .every2
+    private var currentEmphasis: BeatEmphasisPattern = .none
     /// Increments for each scheduled tick (used to pick accent vs normal).
     private var beatPhase: Int = 0
     /// After `player.stop`/`play` or initial start, the first `scheduleAhead` must not

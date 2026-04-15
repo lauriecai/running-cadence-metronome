@@ -21,7 +21,7 @@ struct RunningCadenceMetronomeWatchApp: App {
         let preset = savedPresetRaw.flatMap(TickPreset.init(rawValue:)) ?? .mechanicalTock
 
         let savedEmphasisRaw = UserDefaults.standard.string(forKey: "running_cadence_emphasis")
-        let emphasis = savedEmphasisRaw.flatMap(BeatEmphasisPattern.init(rawValue:)) ?? .every2
+        let emphasis = savedEmphasisRaw.flatMap(BeatEmphasisPattern.init(rawValue:)) ?? .none
 
         _metronome = StateObject(wrappedValue: MetronomeController(
             bpm: bpm,

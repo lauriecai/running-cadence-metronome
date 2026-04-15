@@ -15,7 +15,7 @@ public final class MetronomeController: ObservableObject {
     public init(
         bpm: Int = 180,
         preset: TickPreset = .mechanicalTock,
-        emphasis: BeatEmphasisPattern = .every2,
+        emphasis: BeatEmphasisPattern = .none,
         playback: MetronomeTickPlayback
     ) {
         self.bpm = max(40, min(240, bpm))
