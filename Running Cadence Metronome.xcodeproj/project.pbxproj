@@ -24,6 +24,7 @@
 		CAD00100000000000000000F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CAD002000000000000000024 /* Assets.xcassets */; };
 		CAD001000000000000000010 /* BeatEmphasisPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD002000000000000000013 /* BeatEmphasisPattern.swift */; };
 		CAD001000000000000000011 /* BeatEmphasisPattern.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD002000000000000000013 /* BeatEmphasisPattern.swift */; };
+		CAD001000000000000000012 /* WatchHapticsSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD002000000000000000025 /* WatchHapticsSettings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -64,6 +65,7 @@
 		CAD002000000000000000022 /* WatchContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchContentView.swift; sourceTree = "<group>"; };
 		CAD002000000000000000023 /* WatchMetronomeAudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchMetronomeAudioService.swift; sourceTree = "<group>"; };
 		CAD002000000000000000024 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CAD002000000000000000025 /* WatchHapticsSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHapticsSettings.swift; sourceTree = "<group>"; };
 		CAD002000000000000000030 /* Running Cadence Metronome.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Running Cadence Metronome.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D30BD5E32F844AA400918A04 /* RunningCadenceMetronome-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "RunningCadenceMetronome-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -122,6 +124,7 @@
 				CAD002000000000000000021 /* RunningCadenceMetronomeWatchApp.swift */,
 				CAD002000000000000000022 /* WatchContentView.swift */,
 				CAD002000000000000000023 /* WatchMetronomeAudioService.swift */,
+				CAD002000000000000000025 /* WatchHapticsSettings.swift */,
 				CAD002000000000000000024 /* Assets.xcassets */,
 			);
 			path = RunningCadenceMetronomeWatch;
@@ -272,6 +275,7 @@
 				CAD001000000000000000009 /* RunningCadenceMetronomeWatchApp.swift in Sources */,
 				CAD00100000000000000000A /* WatchContentView.swift in Sources */,
 				CAD00100000000000000000B /* WatchMetronomeAudioService.swift in Sources */,
+				CAD001000000000000000012 /* WatchHapticsSettings.swift in Sources */,
 				CAD00100000000000000000C /* TickPreset.swift in Sources */,
 				CAD001000000000000000011 /* BeatEmphasisPattern.swift in Sources */,
 				CAD00100000000000000000D /* MetronomeTickPlayback.swift in Sources */,

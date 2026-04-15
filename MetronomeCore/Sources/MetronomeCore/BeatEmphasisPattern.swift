@@ -15,7 +15,7 @@ public enum BeatEmphasisPattern: String, CaseIterable, Identifiable, Codable, Se
 
     public var title: String {
         switch self {
-        case .none: return "No accent"
+        case .none: return "No emphasis"
         case .every2: return "Every 2 beats"
         case .every3: return "Every 3 beats"
         case .every4: return "Every 4 beats"
@@ -39,6 +39,16 @@ public enum BeatEmphasisPattern: String, CaseIterable, Identifiable, Codable, Se
         case .every2: return "High, low"
         case .every3: return "High, low, low"
         case .every4: return "High, low, low, low"
+        }
+    }
+
+    /// Compact rhythm notation for UI (hyphen-separated within one cycle).
+    public var rhythmHyphenNotation: String {
+        switch self {
+        case .none: return "even"
+        case .every2: return "high-low"
+        case .every3: return "high-low-low"
+        case .every4: return "high-low-low-low"
         }
     }
 
