@@ -3,6 +3,8 @@ import Foundation
 /// Drives tempo state and delegates tick scheduling to the platform audio service.
 @MainActor
 public final class MetronomeController: ObservableObject {
+    private static let volumeDefaultsKey = "running_cadence_volume"
+
     @Published public private(set) var bpm: Int
     @Published public private(set) var preset: TickPreset
     @Published public private(set) var emphasis: BeatEmphasisPattern
@@ -22,9 +24,10 @@ public final class MetronomeController: ObservableObject {
         self.preset = preset
         self.emphasis = emphasis
         self.isPlaying = false
-        self.volume = 1.0
+        let loadedVolume = Self.loadSavedVolume()
+        self.volume = loadedVolume
         self.playback = playback
-        playback.setVolume(1.0)
+        playback.setVolume(loadedVolume)
     }
 
     public func setBPM(_ value: Int) {
@@ -42,6 +45,7 @@ public final class MetronomeController: ObservableObject {
         guard clamped != volume else { return }
         volume = clamped
         playback.setVolume(clamped)
+        UserDefaults.standard.set(clamped, forKey: Self.volumeDefaultsKey)
     }
 
     public func setPreset(_ value: TickPreset) {
@@ -76,5 +80,12 @@ public final class MetronomeController: ObservableObject {
 
     public func toggle() {
         if isPlaying { stop() } else { start() }
+    }
+
+    private static func loadSavedVolume() -> Float {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: volumeDefaultsKey) != nil else { return 1.0 }
+        let v = defaults.float(forKey: volumeDefaultsKey)
+        return max(0.0, min(1.0, v))
     }
 }

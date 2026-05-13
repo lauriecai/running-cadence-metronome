@@ -8,16 +8,12 @@ struct ContentView: View {
             let isWide = geo.size.width > 700
             Group {
                 if isWide {
-                    HStack(alignment: .top, spacing: 24) {
-                        phonePanel
-//                        watchPanel
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    phonePanel
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 } else {
                     ScrollView {
                         VStack(spacing: 24) {
                             phonePanel
-//                            watchPanel
                         }
                         .padding(.vertical, 8)
                     }
@@ -41,69 +37,6 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 280, idealWidth: 340, maxWidth: 420)
-    }
-
-    private var watchPanel: some View {
-        DeviceChrome(title: "Apple Watch", systemImage: "applewatch") {
-            VStack(spacing: 8) {
-                Text("\(metronome.bpm)")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                Text("BPM")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-
-                Slider(
-                    value: Binding(
-                        get: { Double(metronome.bpm) },
-                        set: { metronome.setBPM(Int($0.rounded())) }
-                    ),
-                    in: 40 ... 240,
-                    step: 1
-                )
-
-                HStack(spacing: 6) {
-                    Button("−10") { metronome.setBPM(metronome.bpm - 10) }
-                        .font(.caption2)
-                    Button("+10") { metronome.setBPM(metronome.bpm + 10) }
-                        .font(.caption2)
-                }
-                .buttonStyle(.bordered)
-
-                Text(metronome.preset.title)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-
-                HStack(spacing: 4) {
-                    Image(systemName: "speaker.fill")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.secondary)
-                    Slider(
-                        value: Binding(
-                            get: { Double(metronome.volume) },
-                            set: { metronome.setVolume(Float($0)) }
-                        ),
-                        in: 0 ... 1
-                    )
-                    Image(systemName: "speaker.wave.3.fill")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.secondary)
-                }
-
-                Button {
-                    metronome.toggle()
-                } label: {
-                    Label(metronome.isPlaying ? "Stop" : "Play", systemImage: metronome.isPlaying ? "stop.fill" : "play.fill")
-                        .font(.caption)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(metronome.isPlaying ? .red : .green)
-            }
-            .multilineTextAlignment(.center)
-        }
-        .frame(width: 200, height: 340)
     }
 
     private var bpmControls: some View {

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Platform-specific audio (and optional haptics). Implemented in the iOS / watchOS apps.
+/// Platform-specific audio (and optional haptics). Implemented in the iOS app.
 public protocol MetronomeTickPlayback: AnyObject {
     /// Begin continuously scheduling tick audio at the given BPM, preset, and accent pattern.
     func startTicking(bpm: Int, preset: TickPreset, emphasis: BeatEmphasisPattern)

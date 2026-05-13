@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import UIKit
 
 /// AVAudioEngine-based tick scheduling for iOS. Owns the timing loop
 /// and pre-schedules buffers on the audio timeline so playback continues
@@ -10,6 +11,9 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
     private let sampleRate: Double = 44_100
     private var buffers: [TickPreset: AVAudioPCMBuffer] = [:]
     private var accentBuffers: [TickPreset: AVAudioPCMBuffer] = [:]
+
+    private let notificationCenter: NotificationCenter
+    private var notificationObservers: [NSObjectProtocol] = []
 
     // Scheduling state — accessed only on schedulingQueue
     private let schedulingQueue = DispatchQueue(label: "com.runningcadencemetronome.scheduling")
@@ -24,12 +28,15 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
     /// the downbeat (high tick) is shifted to an offbeat (especially obvious for every 2).
     private var alignNextCatchUpToDownbeat = false
     private var isTicking = false
+    /// When true, `scheduleAhead` stops scheduling until an interruption ends.
+    private var suspendedForInterruption = false
 
     /// How many beats to pre-schedule ahead of the player's current position.
     /// At 40 BPM this gives ~6 seconds of runway; plenty for background execution.
     private let lookAheadBeats = 4
 
-    override init() {
+    init(notificationCenter: NotificationCenter = .default) {
+        self.notificationCenter = notificationCenter
         super.init()
         let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
         for preset in TickPreset.allCases {
@@ -53,6 +60,14 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: format)
         engine.prepare()
+
+        registerForAudioNotifications()
+    }
+
+    deinit {
+        for observer in notificationObservers {
+            notificationCenter.removeObserver(observer)
+        }
     }
 
     func prepareSession() {
@@ -64,59 +79,68 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
     // MARK: - MetronomeTickPlayback
 
     func startTicking(bpm: Int, preset: TickPreset, emphasis: BeatEmphasisPattern) {
-        startEngineIfNeeded()
-
-        schedulingQueue.async { [self] in
-            isTicking = true
-            currentPreset = preset
-            currentEmphasis = emphasis
-            beatPhase = 0
-            intervalInSamples = AVAudioFrameCount(sampleRate * 60.0 / Double(bpm))
-            nextSampleTime = 0
+        schedulingQueue.async { [weak self] in
+            guard let self else { return }
+            self.suspendedForInterruption = false
+            self.startEngineIfNeeded()
+            self.isTicking = true
+            self.currentPreset = preset
+            self.currentEmphasis = emphasis
+            self.beatPhase = 0
+            self.intervalInSamples = AVAudioFrameCount(self.sampleRate * 60.0 / Double(bpm))
+            self.nextSampleTime = 0
 
             // Reset the player to get a fresh timeline
-            player.stop()
-            player.play()
+            self.player.stop()
+            self.player.play()
 
-            alignNextCatchUpToDownbeat = true
-            scheduleAhead()
+            self.alignNextCatchUpToDownbeat = true
+            self.scheduleAhead()
         }
     }
 
     func stopTicking() {
-        schedulingQueue.async { [self] in
-            isTicking = false
-            player.stop()
+        schedulingQueue.async { [weak self] in
+            guard let self else { return }
+            self.isTicking = false
+            self.suspendedForInterruption = false
+            self.player.stop()
         }
     }
 
     func updateBPM(_ bpm: Int) {
-        schedulingQueue.async { [self] in
-            guard isTicking else { return }
-            intervalInSamples = AVAudioFrameCount(sampleRate * 60.0 / Double(bpm))
-            rescheduleFromNow()
+        schedulingQueue.async { [weak self] in
+            guard let self else { return }
+            guard self.isTicking else { return }
+            self.intervalInSamples = AVAudioFrameCount(self.sampleRate * 60.0 / Double(bpm))
+            self.rescheduleFromNow()
         }
     }
 
     func updatePreset(_ preset: TickPreset) {
-        schedulingQueue.async { [self] in
-            currentPreset = preset
-            guard isTicking else { return }
+        schedulingQueue.async { [weak self] in
+            guard let self else { return }
+            self.currentPreset = preset
+            guard self.isTicking else { return }
             // Flush pre-scheduled buffers and re-schedule with the new sound
-            rescheduleFromNow()
+            self.rescheduleFromNow()
         }
     }
 
     func updateEmphasis(_ emphasis: BeatEmphasisPattern) {
-        schedulingQueue.async { [self] in
-            currentEmphasis = emphasis
-            guard isTicking else { return }
-            rescheduleFromNow()
+        schedulingQueue.async { [weak self] in
+            guard let self else { return }
+            self.currentEmphasis = emphasis
+            guard self.isTicking else { return }
+            self.rescheduleFromNow()
         }
     }
 
     func setVolume(_ volume: Float) {
-        player.volume = max(0.0, min(1.0, volume))
+        let v = max(0.0, min(1.0, volume))
+        schedulingQueue.async { [weak self] in
+            self?.player.volume = v
+        }
     }
 
     // MARK: - Scheduling loop
@@ -137,7 +161,7 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
     /// Pre-schedules tick buffers ahead of the player's current position.
     /// Calls itself again after one beat interval to keep the schedule topped up.
     private func scheduleAhead() {
-        guard isTicking else { return }
+        guard isTicking, !suspendedForInterruption else { return }
         guard let normalBuffer = buffers[currentPreset] else { return }
         let accentBuffer = accentBuffers[currentPreset] ?? normalBuffer
 
@@ -193,6 +217,118 @@ final class MetronomeAudioService: NSObject, MetronomeTickPlayback {
     private func startEngineIfNeeded() {
         guard !engine.isRunning else { return }
         try? engine.start()
+    }
+
+    // MARK: - Session / route recovery
+
+    private func registerForAudioNotifications() {
+        let interruptionObserver = notificationCenter.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: nil
+        ) { [weak self] notification in
+            self?.schedulingQueue.async {
+                self?.handleSessionInterruption(notification)
+            }
+        }
+
+        let routeChangeObserver = notificationCenter.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: nil
+        ) { [weak self] notification in
+            self?.schedulingQueue.async {
+                self?.handleRouteChange(notification)
+            }
+        }
+
+        let engineChangeObserver = notificationCenter.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine,
+            queue: nil
+        ) { [weak self] _ in
+            self?.schedulingQueue.async {
+                self?.recoverPlaybackAfterEngineOrRouteChange()
+            }
+        }
+
+        let becameActiveObserver = notificationCenter.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.schedulingQueue.async {
+                self?.recoverPlaybackAfterEngineOrRouteChange()
+            }
+        }
+
+        notificationObservers = [
+            interruptionObserver,
+            routeChangeObserver,
+            engineChangeObserver,
+            becameActiveObserver,
+        ]
+    }
+
+    /// Caller: `schedulingQueue` only.
+    private func handleSessionInterruption(_ notification: Notification) {
+        guard
+            let userInfo = notification.userInfo,
+            let typeRawValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+            let type = AVAudioSession.InterruptionType(rawValue: typeRawValue)
+        else { return }
+
+        switch type {
+        case .began:
+            guard isTicking else { return }
+            suspendedForInterruption = true
+            player.stop()
+        case .ended:
+            suspendedForInterruption = false
+            guard isTicking else { return }
+            recoverPlaybackAfterInterruptionEnded()
+        @unknown default:
+            break
+        }
+    }
+
+    /// Caller: `schedulingQueue` only.
+    private func handleRouteChange(_ notification: Notification) {
+        guard
+            let userInfo = notification.userInfo,
+            let reasonRawValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+            let reason = AVAudioSession.RouteChangeReason(rawValue: reasonRawValue)
+        else { return }
+
+        switch reason {
+        case .newDeviceAvailable, .oldDeviceUnavailable, .routeConfigurationChange:
+            recoverPlaybackAfterEngineOrRouteChange()
+        default:
+            break
+        }
+    }
+
+    /// Caller: `schedulingQueue` only.
+    private func recoverPlaybackAfterInterruptionEnded() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? session.setActive(true)
+        startEngineIfNeeded()
+        rescheduleFromNow()
+    }
+
+    /// Caller: `schedulingQueue` only.
+    private func recoverPlaybackAfterEngineOrRouteChange() {
+        guard isTicking, !suspendedForInterruption else { return }
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? session.setActive(true)
+        if engine.isRunning {
+            try? engine.stop()
+        }
+        engine.prepare()
+        try? engine.start()
+        rescheduleFromNow()
     }
 
     // MARK: - Buffer synthesis
